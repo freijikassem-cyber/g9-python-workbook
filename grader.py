@@ -4,7 +4,7 @@ import math
 
 
 def run_student(source, inputs):
-    output, calls, ops = [], [], []
+    output, calls, ops, transcript = [], [], [], []
     variables = {}
     position = 0
     error = ''
@@ -16,6 +16,7 @@ def run_student(source, inputs):
             raise ValueError('There are more input() calls than this question needs.')
         value = inputs[position]
         position += 1
+        transcript.append(str(prompt) + value + '\n')
         return value
     def student_print(*values, sep=' ', end='\n'):
         nonlocal written
@@ -25,6 +26,7 @@ def run_student(source, inputs):
         if written > 10000:
             raise ValueError('Keep your output short for this question.')
         output.append(text)
+        transcript.append(text)
     def student_int(*args, **kwargs):
         calls.append('int')
         return int(*args, **kwargs)
@@ -75,7 +77,8 @@ def run_student(source, inputs):
                 continue
             variables[key] = {'v': value, 't': type(value).__name__}
     return {'vars': variables, 'output': ''.join(output).splitlines(),
-            'calls': calls, 'ops': ops, 'error': error, 'inputCount': position}
+            'calls': calls, 'ops': ops, 'error': error, 'inputCount': position,
+            'transcript': ''.join(transcript)}
 
 
 def run_batch(payload):

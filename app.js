@@ -53,58 +53,54 @@ async function runPython(source, inputs) {
 }
 
 // ---------- Questions ----------
-const q = (id, title, prompt, steps, hints, inputs, expected, required, solution, points, firstLine) =>
-  ({ id, title, prompt, steps, hints, inputs, expected, required, solution, points, firstLine });
+const q = (id, title, prompt, steps, hints, inputs, expected, required, solution, points, welcome) =>
+  ({ id, title, prompt, steps, hints, inputs, expected, required, solution, points, welcome });
 
 // Part 1: one step-by-step warm-up question (3 marks)
 const STARTER = [
   q(
     's1',
     'Book Club reading log',
-    'The school library is starting a Book Club. Write a small program that welcomes students and updates their reading log.',
+    'Write a program for the school Book Club.',
     [
-      'Display exactly this welcome line: <code>Welcome to the Book Club!</code>',
-      'Ask the student how many books they have read this month. Use <code>input()</code>.',
-      'The answer from <code>input()</code> is text. Convert it to a whole number with <code>int()</code> and store it in a variable, such as <code>books</code>.',
-      'The student reads 3 more books this week. Add 3 to <code>books</code>.',
-      'Print the new total number of books.',
+      'Print a welcome message. Use your own words, for example: <code>Welcome to the Book Club!</code>',
+      'Ask how many books the student read this month. Store the answer as a whole number (<code>int</code>) in a variable called <code>books</code>.',
+      'The student reads 3 more books. Add 3 to <code>books</code>.',
+      'Print the new total.',
     ],
     [
-      'Use print() with quotation marks for the welcome line. Remember: input() always gives you text.',
-      'Put input() inside int(), store the result in books, then print books + 3.',
+      'Use print() with your message inside quotation marks. input() always gives text, so wrap it in int().',
+      'books = int(input("...")) reads the number. Then print books + 3.',
     ],
     [['5'], ['12']],
     (e) => Number(e[0]) + 3,
     ['print', 'input', 'int', '+'],
     `print("Welcome to the Book Club!")
-books = int(input("How many books have you read this month? "))
+books = int(input("How many books did you read this month? "))
 print(books + 3)`,
     3,
-    'Welcome to the Book Club!',
+    true,
   ),
 ];
 
 // Part 2: two step-by-step questions, chosen from the Part 1 score (3 + 4 marks)
 function followUp(starterMarks) {
-  const tier = starterMarks < 1.5 ? 0 : starterMarks < 3 ? 1 : 2;
-  const tip = (text) => (tier === 0 ? ` ${text}` : '');
-
-  if (tier === 2) {
+  if (starterMarks >= 3) {
     return [
       q(
         'f1',
         'Bookmark stall profit',
-        'Your class sells handmade bookmarks at the school book fair. Each bookmark costs the class 0.25 KD to make. Work out the total profit.',
+        'Your class sells bookmarks at the book fair. Each bookmark costs 0.25 KD to make.',
         [
-          'Ask for the number of bookmarks sold. Convert it with <code>int()</code> and store it in a variable, such as <code>sold</code>.',
-          'Ask for the selling price of one bookmark in KD. Prices can have decimals, so convert it with <code>float()</code> and store it, such as <code>price</code>.',
-          'Work out the profit on one bookmark: the selling price minus the 0.25 KD cost.',
-          'Multiply the profit on one bookmark by the number sold.',
+          'Ask for the number of bookmarks sold. Store it as a whole number (<code>int</code>) in <code>sold</code>.',
+          'Ask for the price of one bookmark. Store it as a decimal (<code>float</code>) in <code>price</code>.',
+          'Calculate the profit on one bookmark: <code>price - 0.25</code>',
+          'Calculate the total profit: <code>sold</code> multiplied by the profit on one bookmark.',
           'Print the total profit.',
         ],
         [
-          'Read two inputs in this order: int() for the number sold, then float() for the price.',
-          'Brackets keep a calculation together: sold * (price - 0.25).',
+          'Two inputs: int() for the number sold, then float() for the price.',
+          'Brackets keep a calculation together: sold * (price - 0.25)',
         ],
         [['12', '0.75'], ['20', '1.5']],
         (e) => Number(e[0]) * (Number(e[1]) - 0.25),
@@ -117,18 +113,19 @@ print(profit)`,
       ),
       q(
         'f2',
-        'Share the book fair funds',
-        'A parent donates 5 KD to the bookmark stall. The class adds the donation to the profit, then shares all the funds equally between 3 class libraries.',
+        'Share the book fair money',
+        'Same bookmark stall, one more step: a parent donates 5 KD, and all the money is shared between 3 class libraries.',
         [
-          'Read two inputs in this order: the whole-number number of bookmarks sold (<code>int()</code>), then the decimal selling price in KD (<code>float()</code>).',
-          'Calculate the total profit. Each bookmark still costs 0.25 KD to make.',
-          'Add the 5 KD donation to the total profit.',
-          'Divide the funds equally between 3 class libraries.',
-          'Print the amount for one library.',
+          'Ask for the number of bookmarks sold. Store it as a whole number (<code>int</code>) in <code>sold</code>.',
+          'Ask for the price of one bookmark. Store it as a decimal (<code>float</code>) in <code>price</code>.',
+          'Calculate the total profit: <code>sold * (price - 0.25)</code>',
+          'Add the 5 KD donation to the profit.',
+          'Divide the money by 3 to find one library’s share.',
+          'Print one library’s share.',
         ],
         [
-          'Break the task into small calculations stored in variables, such as profit and funds.',
-          'Follow the order in the question: profit first, then + 5, then / 3.',
+          'Store each result in a variable: profit, then money, then share.',
+          'money = profit + 5, then share = money / 3',
         ],
         [['12', '0.75'], ['20', '1.5']],
         (e) => (Number(e[0]) * (Number(e[1]) - 0.25) + 5) / 3,
@@ -136,8 +133,8 @@ print(profit)`,
         `sold = int(input("Bookmarks sold? "))
 price = float(input("Price of one bookmark? "))
 profit = sold * (price - 0.25)
-funds = profit + 5
-print(funds / 3)`,
+money = profit + 5
+print(money / 3)`,
         4,
       ),
     ];
@@ -147,17 +144,17 @@ print(funds / 3)`,
     q(
       'f1',
       'Science trip snacks',
-      'The Science Club is going on a trip and needs juice boxes. The club has a budget of 15 KD. Work out how much money is left after buying the juice.',
+      'The Science Club has 15 KD to buy juice boxes for a trip.',
       [
-        'Ask for the number of juice boxes. Convert it with <code>int()</code> and store it in a variable, such as <code>boxes</code>.',
-        'Ask for the price of one juice box in KD. Prices can have decimals, so convert it with <code>float()</code> and store it, such as <code>price</code>.',
-        'Work out the total cost of the juice: the number of boxes multiplied by the price.' + tip('Use <code>*</code>.'),
-        'Subtract the cost from the 15 KD budget.' + tip('Use <code>-</code>.'),
+        'Ask for the number of juice boxes. Store it as a whole number (<code>int</code>) in <code>boxes</code>.',
+        'Ask for the price of one box. Store it as a decimal (<code>float</code>) in <code>price</code>.',
+        'Calculate the cost: <code>boxes * price</code>',
+        'Calculate the money left: <code>15 - cost</code>',
         'Print the money left.',
       ],
       [
-        'Read two inputs in this order: int() for the number of boxes, then float() for the price.',
-        'Store the cost in a variable: cost = boxes * price. Then print 15 - cost.',
+        'Two inputs: int() for the number of boxes, then float() for the price.',
+        'cost = boxes * price, then print(15 - cost)',
       ],
       [['6', '0.75'], ['10', '0.5']],
       (e) => 15 - Number(e[0]) * Number(e[1]),
@@ -171,18 +168,18 @@ print(15 - cost)`,
     q(
       'f2',
       'Share what is left',
-      'The Science Club buys the juice boxes and also pays 3 KD for a bag of ice. Whatever is left from the 15 KD budget is shared equally between 3 groups for lunch.',
+      'Same trip, one more step: the club also pays 3 KD for ice, then shares the money left between 3 groups.',
       [
-        'Read two inputs in this order: the whole-number number of juice boxes (<code>int()</code>), then the decimal price of one box in KD (<code>float()</code>).',
-        'Work out the cost of the juice: boxes multiplied by price.',
-        'Add 3 KD for the ice to get the total spent.' + tip('Use <code>+</code>.'),
-        'Subtract the total spent from the 15 KD budget to find what is left.',
-        'Share what is left equally between 3 groups.' + tip('Use <code>/</code> to divide.'),
-        'Print the amount for one group.',
+        'Ask for the number of juice boxes. Store it as a whole number (<code>int</code>) in <code>boxes</code>.',
+        'Ask for the price of one box. Store it as a decimal (<code>float</code>) in <code>price</code>.',
+        'Calculate the total spent: <code>boxes * price + 3</code>',
+        'Calculate the money left: <code>15 - spent</code>',
+        'Divide the money left by 3 to find one group’s share.',
+        'Print one group’s share.',
       ],
       [
-        'Break the task into small calculations stored in variables, such as spent and left.',
-        'Follow the order in the question. Brackets can keep a calculation together: (15 - spent) / 3.',
+        'Store each result in a variable: spent, then left, then share.',
+        'left = 15 - spent, then share = left / 3',
       ],
       [['6', '0.75'], ['10', '0.5']],
       (e) => (15 - (Number(e[0]) * Number(e[1]) + 3)) / 3,
@@ -203,10 +200,10 @@ const FOLLOW_TOTAL = 7;
 // ---------- Marking ----------
 function grade(question, code, results) {
   const close = (a, b) => typeof a === 'number' && Number.isFinite(a) && Math.abs(a - b) < 1e-7;
+  const hasWelcome = (lines) => lines.length >= 2 && /[a-z]/i.test(lines[0]);
   const outputOk = (r, expected) => {
     const lines = r.output.map((l) => l.trim()).filter(Boolean);
-    if (question.firstLine && lines[0] !== question.firstLine) return false;
-    if (question.firstLine && lines.length < 2) return false;
+    if (question.welcome && !hasWelcome(lines)) return false;
     const nums = (lines.at(-1) || '').match(/[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/g) || [];
     return nums.length === 1 && close(Number(nums[0]), expected);
   };
@@ -221,8 +218,8 @@ function grade(question, code, results) {
   let feedback;
   if (correct) feedback = 'Correct. Your code produces the expected result for every test. Different valid solutions are welcome.';
   else if (first?.error) feedback = first.error;
-  else if (question.firstLine && ranAll && results.some((r) => (r.output.map((l) => l.trim()).filter(Boolean)[0] || '') !== question.firstLine))
-    feedback = `Not quite yet. Check step 1: the first line must be exactly "${question.firstLine}". You can correct your code and check again.`;
+  else if (question.welcome && ranAll && results.some((r) => !hasWelcome(r.output.map((l) => l.trim()).filter(Boolean))))
+    feedback = 'Not quite yet. Check step 1: print a welcome message first, before the total. You can correct your code and check again.';
   else feedback = 'Not quite yet. Work through each step again: check your inputs and calculation, then print the requested result (a short label is fine). You can correct your code and check again.';
   return { id: question.id, title: question.title, marks: (correct ? 1 : partial ? 0.5 : 0) * points, points, correct, feedback, code };
 }
@@ -263,9 +260,9 @@ const STORE_KEY = 'g9-workbook-three-v1';
 let S = {
   phase: 'welcome', name: '', className: '', index: 0,
   answers: {}, hints: {}, first: [], last: [], attempts: {},
-  endedEarly: false, reflection: { learned: '', practice: '' },
+  endedEarly: false, reflection: { learned: '', practice: '' }, runs: {},
 };
-let ui = { feedback: '', checking: false, confirmFinish: false, confirmEnd: false, dialog: null };
+let ui = { showOutput: false, feedback: '', checking: false, confirmFinish: false, confirmEnd: false, dialog: null };
 let checkRun = 0;
 
 try {
@@ -290,6 +287,7 @@ const icon = {
   check: (s) => svg(s, '<path d="M20 6 9 17l-5-5"/>'),
   code: (s) => svg(s, '<path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>'),
   bulb: (s) => svg(s, '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>'),
+  play: (s) => svg(s, '<polygon points="6 3 20 12 6 21 6 3"/>'),
   shield: (s) => svg(s, '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>'),
 };
 
@@ -424,6 +422,7 @@ function workspaceView() {
         <button class="secondary" data-action="check" id="check-btn" ${busy || !(S.answers[Q.id] || '').trim() ? 'disabled' : ''}>${busy ? 'Checking…' : 'Check my answer'}</button>
         <button class="secondary" data-action="hint" ${busy || used >= 2 || (S.hints[Q.id] || 0) >= 2 ? 'disabled' : ''}>${icon.bulb(17)}Use a hint (${2 - used} left)</button>
       </div>
+      ${solved && S.runs[Q.id] ? outputView(S.runs[Q.id]) : ''}
       ${Array.from({ length: S.hints[Q.id] || 0 }, (_, n) => `<div class="hint-revealed">Hint ${n + 1}: ${esc(Q.hints[n])}</div>`).join('')}
       ${S.attempts[Q.id]?.revealed ? `<div class="hint-revealed"><b>One correct solution</b><p>Read each line, then write a working answer in the editor and check it. Your solution can be different.</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(Q.solution)}</pre><p>After a worked answer is shown, a correct solution earns half the marks for this question.</p></div>` : ''}
       ${ui.feedback ? `<div class="feedback" role="status" id="feedback">${esc(ui.feedback)}</div>` : ''}
@@ -437,6 +436,16 @@ function workspaceView() {
     </section>
   </div>
   <p class="small" style="margin-top:22px">Correct answers earn full marks unless a worked answer was shown; then the question is capped at half marks. Correct each answer to unlock the next question. Hints do not deduct marks. After both hints are used, an incorrect check reveals a worked answer. A worked answer also appears after three incorrect checks on a question.</p>`;
+}
+
+function outputView(runs) {
+  if (!ui.showOutput) {
+    return `<button class="secondary output-toggle" data-action="toggle-output">${icon.play(16)}Show the output of my code</button>`;
+  }
+  return `<div class="output-panel">
+    <div class="editor-head"><span>OUTPUT</span><button class="output-hide" data-action="toggle-output">Hide</button></div>
+    ${runs.map((r, n) => `<div class="output-run"><div class="output-label">Run ${n + 1} · typed in: ${r.inputs.map(esc).join(', ')}</div><pre>${esc(r.text.replace(/\n$/, ''))}</pre></div>`).join('')}
+  </div>`;
 }
 
 function endBar() {
@@ -481,6 +490,7 @@ function goto(n) {
   const list = currentList();
   if (ui.checking || (n > S.index && !canOpen(n, list, S.answers, S.attempts)) || n < 0 || n >= list.length) return;
   S.index = n;
+  ui.showOutput = false;
   ui.feedback = '';
   ui.confirmFinish = false;
   render();
@@ -497,9 +507,13 @@ async function check() {
   render();
   try {
     const code = S.answers[Q.id] || '';
-    const result = grade(Q, code, await runPython(code, Q.inputs));
+    const lastRuns = await runPython(code, Q.inputs);
+    const result = grade(Q, code, lastRuns);
     if (run !== checkRun) return;
+    const runs = lastRuns;
     const attempt = recordAttempt(S.attempts[Q.id], result, hintsUsed());
+    S.runs = { ...S.runs, [Q.id]: result.correct ? runs.map((r, n) => ({ inputs: Q.inputs[n], text: r.transcript })) : null };
+    ui.showOutput = false;
     S.attempts = { ...S.attempts, [Q.id]: attempt };
     ui.dialog = { correct: result.correct, revealed: attempt.revealed };
     ui.feedback = result.feedback + (result.correct
@@ -617,6 +631,7 @@ document.addEventListener('click', (e) => {
   else if (action === 'part2') { S.phase = 'followup'; S.index = 0; ui.feedback = ''; render(); }
   else if (action === 'report') { S.phase = 'report'; render(); window.scrollTo(0, 0); }
   else if (action === 'print') window.print();
+  else if (action === 'toggle-output') { ui.showOutput = !ui.showOutput; render(); }
   else if (action === 'end-ask') { ui.confirmEnd = true; render(); }
   else if (action === 'end-cancel') { ui.confirmEnd = false; render(); }
   else if (action === 'end-confirm') endEarly();

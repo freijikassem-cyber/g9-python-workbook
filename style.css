@@ -25,3 +25,13 @@ svg{display:inline-block;vertical-align:middle}
 .dialog-content p{margin:0;color:#64788c}
 @keyframes fade{from{opacity:0}}
 @keyframes zoom{from{opacity:0;transform:scale(.95)}}
+
+/* Output of a correct answer */
+.output-toggle{margin-top:14px}
+.output-panel{margin-top:16px}
+.output-panel .editor-head{align-items:center}
+.output-hide{background:none;border:0;color:#bdcddb;font-size:12px;padding:0;text-decoration:underline}
+.output-run{background:#102236;padding:14px 18px;border-top:1px solid #1d3550}
+.output-run:last-child{border-radius:0 0 8px 8px}
+.output-label{color:#7f97ad;font-size:12px;margin-bottom:6px}
+.output-run pre{margin:0;color:#e6f4f7;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}
