@@ -35,3 +35,7 @@ svg{display:inline-block;vertical-align:middle}
 .output-run:last-child{border-radius:0 0 8px 8px}
 .output-label{color:#7f97ad;font-size:12px;margin-bottom:6px}
 .output-run pre{margin:0;color:#e6f4f7;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}
+
+/* Worked answer: no selecting or copying */
+.no-copy{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:default}
+@media print{.no-copy{display:none}}

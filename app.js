@@ -424,7 +424,7 @@ function workspaceView() {
       </div>
       ${solved && S.runs[Q.id] ? outputView(S.runs[Q.id]) : ''}
       ${Array.from({ length: S.hints[Q.id] || 0 }, (_, n) => `<div class="hint-revealed">Hint ${n + 1}: ${esc(Q.hints[n])}</div>`).join('')}
-      ${S.attempts[Q.id]?.revealed ? `<div class="hint-revealed"><b>One correct solution</b><p>Read each line, then write a working answer in the editor and check it. Your solution can be different.</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(Q.solution)}</pre><p>After a worked answer is shown, a correct solution earns half the marks for this question.</p></div>` : ''}
+      ${S.attempts[Q.id]?.revealed ? `<div class="hint-revealed"><b>One correct solution</b><p>Read each line, then type a working answer in the editor yourself and check it. Copying and pasting are turned off. Your solution can be different.</p><pre class="no-copy" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(Q.solution)}</pre><p>After a worked answer is shown, a correct solution earns half the marks for this question.</p></div>` : ''}
       ${ui.feedback ? `<div class="feedback" role="status" id="feedback">${esc(ui.feedback)}</div>` : ''}
       <div class="actions">
         <button class="secondary" data-action="goto" data-index="${i - 1}" ${busy || i === 0 ? 'disabled' : ''}>Previous</button>
@@ -570,6 +570,36 @@ function endEarly() {
   render();
   window.scrollTo(0, 0);
 }
+
+// Once a worked answer is shown, it cannot be selected or copied, and nothing can be pasted into the editor
+const solutionShown = () => ['starter', 'followup'].includes(S.phase) && !!S.attempts[currentList()[S.index]?.id]?.revealed;
+const inSolution = (e) => e.target instanceof Element && !!e.target.closest('.no-copy');
+function blockPaste(e) {
+  e.preventDefault();
+  let note = document.getElementById('paste-note');
+  if (!note) {
+    note = document.createElement('div');
+    note.id = 'paste-note';
+    note.className = 'feedback';
+    note.setAttribute('role', 'status');
+    document.querySelector('.code-editor')?.after(note);
+  }
+  note.textContent = 'Pasting is turned off for this question. Type your answer line by line.';
+}
+['copy', 'cut', 'contextmenu', 'dragstart', 'selectstart'].forEach((type) =>
+  document.addEventListener(type, (e) => {
+    if (inSolution(e)) e.preventDefault();
+    else if ((type === 'copy' || type === 'cut') && solutionShown() && document.getSelection()?.containsNode?.(document.querySelector('.no-copy'), true)) e.preventDefault();
+  }),
+);
+['paste', 'drop'].forEach((type) =>
+  document.addEventListener(type, (e) => {
+    if (e.target.id === 'code' && solutionShown()) blockPaste(e);
+  }),
+);
+document.addEventListener('beforeinput', (e) => {
+  if (e.target.id === 'code' && solutionShown() && /^insertFrom(Paste|Drop)/.test(e.inputType)) blockPaste(e);
+});
 
 document.addEventListener('submit', (e) => {
   if (e.target.dataset.form !== 'start') return;
