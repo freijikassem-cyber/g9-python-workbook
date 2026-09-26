@@ -255,8 +255,116 @@ function endedResults(list, answers, attempts) {
   });
 }
 
+// ---------- Classroom link and saving to the teacher's report ----------
+const CONFIG = window.G9_CONFIG || {};
+const CLASS_CODE = (new URLSearchParams(location.search).get('class') || '').trim();
+let classroom = 'checking'; // checking | ok | missing
+let sync = { status: '', busy: false, again: false, timer: null };
+
+async function rpc(name, body) {
+  const res = await fetch(`${CONFIG.supabaseUrl}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: { apikey: CONFIG.supabaseKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.status === 204 ? null : res.json();
+}
+
+function sessionIdentity() {
+  const key = 'g9-student-session:' + CLASS_CODE;
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(key) || 'null');
+    if (saved) return saved;
+  } catch {}
+  const identity = {
+    id: crypto.randomUUID(),
+    token: Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, '0')).join(''),
+  };
+  try { sessionStorage.setItem(key, JSON.stringify(identity)); } catch {}
+  return identity;
+}
+
+function liveResults(list, answers, attempts, part) {
+  return list.map((x) => {
+    const base = attempts[x.id] ? finalResult(attempts[x.id]) : {
+      title: x.title, marks: 0, points: x.points || 1, correct: false,
+      code: answers[x.id] || '', feedback: 'Not checked yet.',
+    };
+    return {
+      part, title: base.title, marks: base.marks, points: base.points || 1, correct: base.correct,
+      feedback: base.feedback, code: (base.code || '').slice(0, 6000), revealed: !!attempts[x.id]?.revealed,
+    };
+  });
+}
+
+function reportPayload() {
+  const tag = (list, part) => list.map((r) => ({
+    part, title: r.title, marks: r.marks, points: r.points || 1, correct: r.correct,
+    feedback: r.feedback, code: (r.code || '').slice(0, 6000), revealed: /worked answer was shown/.test(r.feedback || ''),
+  }));
+  const starter = S.first.length ? tag(S.first, 'Starter') : liveResults(STARTER, S.answers, S.attempts, 'Starter');
+  const follow = S.last.length
+    ? tag(S.last, 'Follow-up')
+    : S.phase === 'followup' ? liveResults(followUp(starterScore()), S.answers, S.attempts, 'Follow-up') : [];
+  const results = [...starter, ...follow];
+  return {
+    name: S.name, className: S.className, phase: S.phase, endedEarly: S.endedEarly,
+    starter: S.first.length ? starterScore() : 0,
+    followup: S.last.length ? followScore() : 0,
+    hints: hintsUsed(), checked: Object.keys(S.attempts).length, questionCount: STARTER.length + 2,
+    reflection: S.reflection, results,
+  };
+}
+
+async function saveToTeacher() {
+  if (classroom !== 'ok' || S.phase === 'welcome') return;
+  if (sync.busy) { sync.again = true; return; }
+  sync.busy = true;
+  sync.again = false;
+  const { id, token } = sessionIdentity();
+  try {
+    await rpc('save_student_session', { p_id: id, p_token: token, p_code: CLASS_CODE, p_data: reportPayload() });
+    setSyncStatus('Progress saved for your teacher.');
+  } catch {
+    setSyncStatus('Progress has not reached your teacher. Check your connection and retry.');
+  } finally {
+    sync.busy = false;
+    if (sync.again) saveToTeacher();
+  }
+}
+
+function queueSave() {
+  clearTimeout(sync.timer);
+  sync.timer = setTimeout(saveToTeacher, 800);
+}
+setInterval(saveToTeacher, 25000);
+
+function setSyncStatus(text) {
+  sync.status = text;
+  const el = document.querySelector('.sync-status');
+  if (el) el.outerHTML = syncView();
+  else if (S.phase !== 'welcome') document.querySelector('main')?.insertAdjacentHTML('afterbegin', syncView());
+}
+
+function syncView() {
+  if (!sync.status || S.phase === 'welcome') return '';
+  return `<div class="sync-status no-print" role="status">${esc(sync.status)}${sync.status.includes('not reached') ? '<button class="secondary" data-action="retry-save">Retry save</button>' : ''}</div>`;
+}
+
+async function checkClassroom() {
+  if (!CLASS_CODE || !CONFIG.supabaseUrl) { classroom = 'missing'; render(); return; }
+  try {
+    classroom = (await rpc('classroom_exists', { p_code: CLASS_CODE })) ? 'ok' : 'missing';
+  } catch {
+    classroom = 'missing';
+  }
+  render();
+  queueSave();
+}
+
 // ---------- State ----------
-const STORE_KEY = 'g9-workbook-three-v1';
+const STORE_KEY = 'g9-workbook-three-v1:' + CLASS_CODE;
 let S = {
   phase: 'welcome', name: '', className: '', index: 0,
   answers: {}, hints: {}, first: [], last: [], attempts: {},
@@ -310,7 +418,7 @@ function welcomeView() {
         <label>Grade / class<input required maxlength="25" name="className" value="${esc(S.className)}" placeholder="e.g. 9B"></label>
         <button class="primary">Open my assignment ${icon.arrow(18)}</button>
       </form>
-      <div class="privacy">${icon.shield(16)} Print or save your report at the end and share it with your teacher.</div>
+      <div class="privacy">${icon.shield(16)} Your name, progress and reflection are shared with your teacher.</div>
     </section>
     <aside>
       <div class="journey">
@@ -341,7 +449,7 @@ function reflectionView() {
   <section class="card reflection">
     <div class="eyebrow">PAUSE AND REFLECT</div>
     <h1>What did you learn?</h1>
-    <p>Think about your Python work. Your reflection appears on your report and will not change your marks.</p>
+    <p>Think about your Python work. Your reflection will be shared with your teacher and will not change your marks.</p>
     <label>One thing I learned or understand better<textarea maxlength="1200" rows="4" data-reflect="learned" placeholder="For example: I learned why input needs converting before arithmetic…">${esc(S.reflection.learned)}</textarea></label>
     <label>Something I want to practise next<textarea maxlength="1200" rows="4" data-reflect="practice" placeholder="What would help you feel more confident?">${esc(S.reflection.practice)}</textarea></label>
     <div class="actions">
@@ -465,7 +573,23 @@ function dialogView() {
   </div></div>`;
 }
 
+function gateView() {
+  return `
+  <div class="shell">
+    <main>
+      <h1>G9 Assignment Helper</h1>
+      <p role="status">${classroom === 'checking' ? 'Opening your classroom…' : 'This classroom link is unavailable. Please ask your teacher for the correct link.'}</p>
+      <a href="teacher.html">Teacher Report</a>
+    </main>
+    <footer>Created by Mr. Kassem Freiji - ICT Department</footer>
+  </div>`;
+}
+
 function render() {
+  if (classroom !== 'ok') {
+    document.getElementById('root').innerHTML = gateView();
+    return;
+  }
   let body;
   if (S.phase === 'welcome') body = welcomeView();
   else if (S.phase === 'between') body = betweenView();
@@ -475,13 +599,15 @@ function render() {
   document.getElementById('root').innerHTML = `
   <div class="shell">
     <header>
-      <a class="brand" href="./"><span class="brand-icon">${icon.code(25)}</span><span>G9 <b>Assignment Helper</b></span></a>
+      <a class="brand" href="?class=${encodeURIComponent(CLASS_CODE)}"><span class="brand-icon">${icon.code(25)}</span><span>G9 <b>Assignment Helper</b></span></a>
+      <a class="secondary teacher-report-link" href="teacher.html">${icon.shield(18)}Teacher Report</a>
     </header>
-    <main>${body}</main>
+    <main>${syncView()}${body}</main>
     ${endBar()}
     <footer><span>Created by Mr. Kassem Freiji - ICT Department</span></footer>
   </div>${dialogView()}`;
   save();
+  queueSave();
   drawSolution();
   if (ui.dialog) document.querySelector('.dialog-content .primary')?.focus();
 }
@@ -668,6 +794,7 @@ document.addEventListener('input', (e) => {
   } else if (t.dataset.reflect) {
     S.reflection = { ...S.reflection, [t.dataset.reflect]: t.value };
     save();
+    queueSave();
   } else if (t.name === 'name' || t.name === 'className') {
     S[t.name] = t.value;
     save();
@@ -702,6 +829,7 @@ document.addEventListener('click', (e) => {
   else if (action === 'part2') { S.phase = 'followup'; S.index = 0; ui.feedback = ''; render(); }
   else if (action === 'report') { S.phase = 'report'; render(); window.scrollTo(0, 0); }
   else if (action === 'print') window.print();
+  else if (action === 'retry-save') saveToTeacher();
   else if (action === 'toggle-output') { ui.showOutput = !ui.showOutput; render(); }
   else if (action === 'end-ask') { ui.confirmEnd = true; render(); }
   else if (action === 'end-cancel') { ui.confirmEnd = false; render(); }
@@ -709,3 +837,4 @@ document.addEventListener('click', (e) => {
 });
 
 render();
+checkClassroom();
