@@ -424,7 +424,7 @@ function workspaceView() {
       </div>
       ${solved && S.runs[Q.id] ? outputView(S.runs[Q.id]) : ''}
       ${Array.from({ length: S.hints[Q.id] || 0 }, (_, n) => `<div class="hint-revealed">Hint ${n + 1}: ${esc(Q.hints[n])}</div>`).join('')}
-      ${S.attempts[Q.id]?.revealed ? `<div class="hint-revealed"><b>One correct solution</b><p>Read each line, then type a working answer in the editor yourself and check it. Copying and pasting are turned off. Your solution can be different.</p><pre class="no-copy" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(Q.solution)}</pre><p>After a worked answer is shown, a correct solution earns half the marks for this question.</p></div>` : ''}
+      ${S.attempts[Q.id]?.revealed ? `<div class="hint-revealed"><b>One correct solution</b><p>Read each line, then type a working answer in the editor yourself and check it. Copying and pasting are turned off. Your solution can be different.</p><canvas class="no-copy solution-canvas" role="img" aria-label="Worked answer shown as a picture"></canvas><p>After a worked answer is shown, a correct solution earns half the marks for this question.</p></div>` : ''}
       ${ui.feedback ? `<div class="feedback" role="status" id="feedback">${esc(ui.feedback)}</div>` : ''}
       <div class="actions">
         <button class="secondary" data-action="goto" data-index="${i - 1}" ${busy || i === 0 ? 'disabled' : ''}>Previous</button>
@@ -482,6 +482,7 @@ function render() {
     <footer><span>Created by Mr. Kassem Freiji - ICT Department</span></footer>
   </div>${dialogView()}`;
   save();
+  drawSolution();
   if (ui.dialog) document.querySelector('.dialog-content .primary')?.focus();
 }
 
@@ -570,6 +571,46 @@ function endEarly() {
   render();
   window.scrollTo(0, 0);
 }
+
+// The worked answer is drawn as a picture, so there is no text to select or copy
+function drawSolution() {
+  const canvas = document.querySelector('.solution-canvas');
+  if (!canvas) return;
+  const code = currentList()[S.index].solution;
+  const paint = () => {
+    const width = canvas.parentElement.clientWidth - 28;
+    const ratio = window.devicePixelRatio || 1;
+    const ctx = canvas.getContext('2d');
+    const font = '14px "Geist Mono", ui-monospace, SFMono-Regular, Consolas, monospace';
+    ctx.font = font;
+    // Wrap long lines to fit the box
+    const lines = [];
+    for (const line of code.split('\n')) {
+      let rest = line;
+      while (ctx.measureText(rest).width > width && rest.length > 1) {
+        let cut = rest.length;
+        while (cut > 1 && ctx.measureText(rest.slice(0, cut)).width > width) cut--;
+        lines.push(rest.slice(0, cut));
+        rest = '  ' + rest.slice(cut);
+      }
+      lines.push(rest);
+    }
+    const lineHeight = 24;
+    const height = lines.length * lineHeight + 8;
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.scale(ratio, ratio);
+    ctx.font = font;
+    ctx.fillStyle = '#172c44';
+    ctx.textBaseline = 'top';
+    lines.forEach((l, n) => ctx.fillText(l, 0, 6 + n * lineHeight));
+  };
+  paint();
+  document.fonts?.ready.then(() => canvas.isConnected && paint());
+}
+window.addEventListener('resize', () => drawSolution());
 
 // Once a worked answer is shown, it cannot be selected or copied, and nothing can be pasted into the editor
 const solutionShown = () => ['starter', 'followup'].includes(S.phase) && !!S.attempts[currentList()[S.index]?.id]?.revealed;
